@@ -27,6 +27,16 @@ app.use((req, res, next) => {
   next();
 });
 
+// URL Normalizer Middleware for Vercel Serverless Function compatibility
+app.use((req, res, next) => {
+  if (req.url.startsWith('/api/')) {
+    req.url = req.url.slice(4);
+  } else if (req.url === '/api') {
+    req.url = '/';
+  }
+  next();
+});
+
 app.use(express.json());
 app.use(cookieParser());
 
@@ -34,20 +44,13 @@ app.use(cookieParser());
 app.use(fingerprintMiddleware);
 app.use(optionalAuth);
 
-// Routes (Mounted on both /api/* and /* for universal Vercel deployment compatibility)
-app.use('/api/auth', authRoutes);
+// Routes
 app.use('/auth', authRoutes);
-
-app.use('/api/literature', literatureRoutes);
 app.use('/literature', literatureRoutes);
-
-app.use('/api/authors', authorRoutes);
 app.use('/authors', authorRoutes);
-
-app.use('/api/feed', feedRoutes);
 app.use('/feed', feedRoutes);
 
-app.get(['/health', '/api/health'], (req, res) => {
+app.get(['/', '/health'], (req, res) => {
   res.json({
     status: 'ok',
     timestamp: new Date().toISOString(),
