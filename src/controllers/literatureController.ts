@@ -242,6 +242,12 @@ export async function createLiterature(req: Request, res: Response): Promise<voi
       ? readingTimeMin
       : Math.max(1, Math.ceil(content.trim().split(/\s+/).length / 200));
 
+    // Auto-upgrade reader role to writer if needed
+    await db.user.updateMany({
+      where: { id: req.user.id, role: 'reader' },
+      data: { role: 'writer' }
+    });
+
     const newLiterature = await db.literature.create({
       data: {
         authorId: req.user.id,

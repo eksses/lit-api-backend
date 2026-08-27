@@ -62,6 +62,8 @@ export async function register(req: Request, res: Response): Promise<void> {
 
     const passwordHash = await bcrypt.hash(password, 10);
 
+    const requestedRole = (req.body.role === 'writer' || req.body.role === 'author') ? 'writer' : 'reader';
+
     const newUser = await db.user.create({
       data: {
         name: name.trim(),
@@ -70,7 +72,7 @@ export async function register(req: Request, res: Response): Promise<void> {
         passwordHash,
         bio: bio || null,
         avatarUrl: avatarUrl || null,
-        role: 'reader'
+        role: requestedRole
       }
     });
 
@@ -204,5 +206,40 @@ export async function me(req: Request, res: Response): Promise<void> {
   } catch (error) {
     console.error('Get profile error:', error);
     res.status(500).json({ error: 'Internal server error' });
+  }
+}
+
+export async function updateRole(req: Request, res: Response): Promise<void> {
+  try {
+    if (!req.user) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
+    const { role } = req.body;
+    const targetRole = (role === 'writer' || role === 'author') ? 'writer' : 'reader';
+
+    const updatedUser = await db.user.update({
+      where: { id: req.user.id },
+      data: { role: targetRole },
+      select: {
+        id: true,
+        name: true,
+        username: true,
+        email: true,
+        role: true,
+        bio: true,
+        avatarUrl: true,
+        createdAt: true
+      }
+    });
+
+    res.status(200).json({
+      message: `Role updated to ${targetRole}`,
+      user: updatedUser
+    });
+  } catch (error) {
+    console.error('Update role error:', error);
+    res.status(500).json({ error: 'Internal server error while updating role' });
   }
 }
