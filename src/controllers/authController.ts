@@ -8,15 +8,15 @@ const JWT_SECRET = process.env.JWT_SECRET || 'lit_mobile_pwa_secret_jwt_key_2026
 
 const COOKIE_OPTIONS = {
   httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
-  sameSite: 'lax' as const,
-  maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+  secure: true,
+  sameSite: 'none' as const,
+  maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
 };
 
 const CLEAR_COOKIE_OPTIONS = {
   httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
-  sameSite: 'lax' as const
+  secure: true,
+  sameSite: 'none' as const
 };
 
 export async function register(req: Request, res: Response): Promise<void> {

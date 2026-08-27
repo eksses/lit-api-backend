@@ -17,6 +17,10 @@ export function extractToken(req: Request): string | null {
     return authHeader.substring(7);
   }
 
+  if (req.query && typeof req.query.token === 'string') {
+    return req.query.token;
+  }
+
   return null;
 }
 
