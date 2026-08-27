@@ -4,7 +4,7 @@ import { isUuid, generateSlug } from '../utils/helpers.js';
 
 export async function getLiteratureList(req: Request, res: Response): Promise<void> {
   try {
-    const { category, language, author_id, page = '1', limit = '10' } = req.query;
+    const { category, language, author_id, sort = 'trending', page = '1', limit = '10' } = req.query;
 
     const pageNum = Math.max(1, parseInt(page as string, 10) || 1);
     const limitNum = Math.max(1, Math.min(50, parseInt(limit as string, 10) || 10));
@@ -24,6 +24,13 @@ export async function getLiteratureList(req: Request, res: Response): Promise<vo
       whereClause.authorId = author_id.trim();
     }
 
+    let orderByClause: any = { createdAt: 'desc' };
+    if (sort === 'trending') {
+      orderByClause = [{ viewsCount: 'desc' }, { createdAt: 'desc' }];
+    } else if (sort === 'top') {
+      orderByClause = [{ viewsCount: 'desc' }, { readingTimeMin: 'desc' }];
+    }
+
     const total = await db.literature.count({ where: whereClause });
 
     let likesIncludeCondition: any = false;
@@ -35,7 +42,7 @@ export async function getLiteratureList(req: Request, res: Response): Promise<vo
 
     const rawItems = await db.literature.findMany({
       where: whereClause,
-      orderBy: { createdAt: 'desc' },
+      orderBy: orderByClause,
       skip,
       take: limitNum,
       include: {
