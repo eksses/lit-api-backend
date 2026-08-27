@@ -4,7 +4,7 @@ import { isUuid, generateSlug } from '../utils/helpers.js';
 
 export async function getLiteratureList(req: Request, res: Response): Promise<void> {
   try {
-    const { category, language, author_id, sort = 'trending', page = '1', limit = '10' } = req.query;
+    const { category, language, author_id, sort = 'for_you', page = '1', limit = '10' } = req.query;
 
     const pageNum = Math.max(1, parseInt(page as string, 10) || 1);
     const limitNum = Math.max(1, Math.min(50, parseInt(limit as string, 10) || 10));
@@ -24,11 +24,13 @@ export async function getLiteratureList(req: Request, res: Response): Promise<vo
       whereClause.authorId = author_id.trim();
     }
 
-    let orderByClause: any = { createdAt: 'desc' };
-    if (sort === 'trending') {
-      orderByClause = [{ viewsCount: 'desc' }, { createdAt: 'desc' }];
+    let orderByClause: any = [{ viewsCount: 'desc' }, { createdAt: 'desc' }];
+    if (sort === 'latest') {
+      orderByClause = { createdAt: 'desc' };
     } else if (sort === 'top') {
       orderByClause = [{ viewsCount: 'desc' }, { readingTimeMin: 'desc' }];
+    } else if (sort === 'trending') {
+      orderByClause = [{ viewsCount: 'desc' }, { createdAt: 'desc' }];
     }
 
     const total = await db.literature.count({ where: whereClause });
@@ -40,11 +42,35 @@ export async function getLiteratureList(req: Request, res: Response): Promise<vo
       likesIncludeCondition = { where: { userId: null, deviceHash: req.deviceHash } };
     }
 
+    // Fetch user's followed author IDs for For You personalized recommendation algorithm boost
+    let followedAuthorIds: string[] = [];
+    let likedCategoriesMap: Record<string, number> = {};
+
+    if (req.user) {
+      const follows = await db.follow.findMany({
+        where: { followerId: req.user.id },
+        select: { followingId: true },
+      });
+      followedAuthorIds = follows.map((f) => f.followingId);
+
+      const userLikes = await db.like.findMany({
+        where: { userId: req.user.id },
+        include: { literature: { select: { category: true } } },
+        take: 50,
+      });
+
+      userLikes.forEach((l) => {
+        if (l.literature?.category) {
+          likedCategoriesMap[l.literature.category] = (likedCategoriesMap[l.literature.category] || 0) + 1;
+        }
+      });
+    }
+
     const rawItems = await db.literature.findMany({
       where: whereClause,
       orderBy: orderByClause,
-      skip,
-      take: limitNum,
+      skip: sort === 'for_you' ? 0 : skip, // For You ranks in memory for score boosting
+      take: sort === 'for_you' ? 100 : limitNum,
       include: {
         author: {
           select: {
@@ -64,7 +90,7 @@ export async function getLiteratureList(req: Request, res: Response): Promise<vo
       }
     });
 
-    const items = rawItems.map((item) => ({
+    let items = rawItems.map((item) => ({
       id: item.id,
       authorId: item.authorId,
       author: item.author,
@@ -78,8 +104,31 @@ export async function getLiteratureList(req: Request, res: Response): Promise<vo
       createdAt: item.createdAt,
       likesCount: item._count.likes,
       commentsCount: item._count.comments,
-      is_liked: Array.isArray(item.likes) && item.likes.length > 0
+      is_liked: Array.isArray(item.likes) && item.likes.length > 0,
+      // Personalization score computation
+      score: 0,
     }));
+
+    // If Personalized 'For You' Algorithm sort is active
+    if (sort === 'for_you') {
+      items = items.map((item) => {
+        let score = (item.viewsCount * 0.1) + (item.likesCount * 0.5) + (item.commentsCount * 1.0);
+        // Followed author score boost (+10 points)
+        if (followedAuthorIds.includes(item.authorId)) {
+          score += 10;
+        }
+        // Preferred category score boost (+3 points per like)
+        if (likedCategoriesMap[item.category]) {
+          score += likedCategoriesMap[item.category] * 3;
+        }
+        return { ...item, score };
+      });
+
+      // Sort by calculated personalized score
+      items.sort((a, b) => b.score - a.score);
+      // Slice pagination window
+      items = items.slice(skip, skip + limitNum);
+    }
 
     const totalPages = Math.ceil(total / limitNum);
 
@@ -224,7 +273,18 @@ export async function createLiterature(req: Request, res: Response): Promise<voi
       return;
     }
 
-    const validCategories = ['poem', 'story', 'micro_poem'];
+    const validCategories = [
+      'poem',
+      'story',
+      'micro_poem',
+      'prose_poetry',
+      'novel',
+      'serial_story',
+      'long_story',
+      'collection',
+      'uncategorized',
+      'other',
+    ];
     if (!validCategories.includes(category)) {
       res.status(400).json({ error: `Invalid category. Must be one of: ${validCategories.join(', ')}` });
       return;
