@@ -1,0 +1,85 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name         String       @db.VarChar(100)
+  username     String       @unique @db.VarChar(50)
+  email        String       @unique @db.VarChar(255)
+  passwordHash String       @map("password_hash") @db.VarChar(255)
+  bio          String?      @db.Text
+  avatarUrl    String?      @map("avatar_url") @db.Text
+  role         String       @default("reader") @db.VarChar(20)
+  createdAt    DateTime     @default(now()) @map("created_at") @db.Timestamptz
+
+  literatures  Literature[]
+  likes        Like[]
+  comments     Comment[]
+  following    Follow[]     @relation("follower")
+  followers    Follow[]     @relation("following")
+
+  @@map("users")
+}
+
+model Literature {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  authorId       String    @map("author_id") @db.Uuid
+  author         User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  title          String    @db.VarChar(255)
+  slug           String    @unique @db.VarChar(300)
+  content        String    @db.Text
+  category       String    @db.VarChar(30)
+  language       String    @db.VarChar(10)
+  readingTimeMin Int       @default(1) @map("reading_time_min")
+  viewsCount     Int       @default(0) @map("views_count")
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  likes          Like[]
+  comments       Comment[]
+
+  @@map("literature")
+}
+
+model Follow {
+  followerId  String   @map("follower_id") @db.Uuid
+  followingId String   @map("following_id") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  follower    User     @relation("follower", fields: [followerId], references: [id], onDelete: Cascade)
+  following   User     @relation("following", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@id([followerId, followingId])
+  @@map("follows")
+}
+
+model Like {
+  id           String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  literatureId String     @map("literature_id") @db.Uuid
+  literature   Literature @relation(fields: [literatureId], references: [id], onDelete: Cascade)
+  userId       String?    @map("user_id") @db.Uuid
+  user         User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deviceHash   String?    @map("device_hash") @db.VarChar(64)
+  createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamptz
+
+  @@map("likes")
+}
+
+model Comment {
+  id           String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  literatureId String     @map("literature_id") @db.Uuid
+  literature   Literature @relation(fields: [literatureId], references: [id], onDelete: Cascade)
+  userId       String?    @map("user_id") @db.Uuid
+  user         User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
+  guestName    String?    @map("guest_name") @db.VarChar(60)
+  deviceHash   String     @map("device_hash") @db.VarChar(64)
+  content      String     @db.Text
+  createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamptz
+
+  @@map("comments")
+}
