@@ -34,13 +34,20 @@ app.use(cookieParser());
 app.use(fingerprintMiddleware);
 app.use(optionalAuth);
 
-// Routes
+// Routes (Mounted on both /api/* and /* for universal Vercel deployment compatibility)
 app.use('/api/auth', authRoutes);
-app.use('/api/literature', literatureRoutes);
-app.use('/api/authors', authorRoutes);
-app.use('/api/feed', feedRoutes);
+app.use('/auth', authRoutes);
 
-app.get('/health', (req, res) => {
+app.use('/api/literature', literatureRoutes);
+app.use('/literature', literatureRoutes);
+
+app.use('/api/authors', authorRoutes);
+app.use('/authors', authorRoutes);
+
+app.use('/api/feed', feedRoutes);
+app.use('/feed', feedRoutes);
+
+app.get(['/health', '/api/health'], (req, res) => {
   res.json({
     status: 'ok',
     timestamp: new Date().toISOString(),
