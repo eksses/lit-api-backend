@@ -178,6 +178,24 @@ async function seedData() {
       content: `সুরবালা এবং আমি এক গ্রামেই বড় হয়েছিলাম। বাল্যকালে আমাদের মধ্যে খেলাধুলার যে সহজ সম্পর্ক ছিল, বয়সের সাথে সাথে তা দূরে সরে যায়। কিন্তু ঝড়ের সেই এক রাতে সমস্ত বাধা পেরিয়ে আমাদের আত্মা মুহূর্তের জন্য এক হয়ে উঠেছিল। সেই একরাত্রির স্মৃতি আমার বাকি জীবনের আলো হয়ে রইল।`
     },
 
+    // Philosophy Works
+    {
+      authorUsername: 'tagore',
+      title: 'আত্মার স্বাধীনতা ও জীবনদর্শন',
+      category: 'philosophy',
+      language: 'bn',
+      readingTimeMin: 4,
+      content: `মানুষের আত্মা যখন জাগতিক আকাঙ্ক্ষার সীমা পেরিয়ে অনন্তের উপলব্ধি স্পর্শ করে, তখনই জন্ম নেয় প্রকৃত স্বাধীন দর্শন। জীবনের প্রতিটি বাধা আসলে এক একটি দ্বার উন্মোচনের বার্তা বহন করে। আমাদের অস্তিত্বের সার্থকতা বস্তু পুঞ্জীভূতকরণে নয়, বরং চেতনার মুক্ত প্রকাশে।`
+    },
+    {
+      authorUsername: 'emily_d',
+      title: 'The Philosophy of Solitude & Mind',
+      category: 'philosophy',
+      language: 'en',
+      readingTimeMin: 3,
+      content: `The mind is wider than the sky, for put them side by side, the one the other will contain with ease and you beside. The solitude of existence is not isolation, but the boundless room where consciousness discovers its own light.`
+    },
+
     // English Poems
     {
       authorUsername: 'emily_d',

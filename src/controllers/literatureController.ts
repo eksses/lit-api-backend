@@ -282,6 +282,7 @@ export async function createLiterature(req: Request, res: Response): Promise<voi
       'serial_story',
       'long_story',
       'collection',
+      'philosophy',
       'uncategorized',
       'other',
     ];
