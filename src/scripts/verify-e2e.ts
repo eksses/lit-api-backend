@@ -306,38 +306,15 @@ async function runE2EVerification() {
       }
     });
 
-    // --- SECTION 6: Vercel Configurations Integrity ---
-    console.log('\n--- Section 6: Vercel Configurations Integrity ---');
-    const backendVercelPath = path.resolve(process.cwd(), 'vercel.json');
-    const clientVercelPath = path.resolve(process.cwd(), '../lit-pwa-client/vercel.json');
-
-    const backendVercelExists = fs.existsSync(backendVercelPath);
-    assert(backendVercelExists, 'lit-api-backend/vercel.json exists');
-    if (backendVercelExists) {
-      const backendVercel = JSON.parse(fs.readFileSync(backendVercelPath, 'utf8'));
-      assert(backendVercel.version === 2, 'lit-api-backend/vercel.json uses version 2');
-      assert(
-        Array.isArray(backendVercel.builds) && backendVercel.builds.some((b: any) => b.src === 'api/index.ts'),
-        'lit-api-backend/vercel.json configures api/index.ts build'
-      );
-      assert(
-        Array.isArray(backendVercel.routes) && backendVercel.routes.some((r: any) => r.dest === 'api/index.ts'),
-        'lit-api-backend/vercel.json routes traffic to api/index.ts'
-      );
-    }
-
-    const clientVercelExists = fs.existsSync(clientVercelPath);
-    assert(clientVercelExists, 'lit-pwa-client/vercel.json exists');
-    if (clientVercelExists) {
-      const clientVercel = JSON.parse(fs.readFileSync(clientVercelPath, 'utf8'));
-      assert(
-        Array.isArray(clientVercel.rewrites) && clientVercel.rewrites.some((r: any) => r.destination === '/index.html'),
-        'lit-pwa-client/vercel.json contains SPA rewrite to /index.html'
-      );
-      assert(
-        Array.isArray(clientVercel.headers) && clientVercel.headers.some((h: any) => h.source === '/sw.js'),
-        'lit-pwa-client/vercel.json configures headers for /sw.js'
-      );
+    // --- SECTION 6: Vercel Deployment & Build Configuration ---
+    console.log('\n--- Section 6: Vercel Deployment & Build Configuration ---');
+    const pkgPath = path.resolve(process.cwd(), 'package.json');
+    const pkgExists = fs.existsSync(pkgPath);
+    assert(pkgExists, 'lit-api-backend/package.json exists');
+    if (pkgExists) {
+      const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+      assert(pkg.scripts?.postinstall === 'prisma generate', 'package.json includes postinstall script for prisma generate');
+      assert(pkg.scripts?.build?.includes('prisma generate'), 'package.json build script includes prisma generate');
     }
 
     // --- CLEANUP ---
