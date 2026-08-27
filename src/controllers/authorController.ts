@@ -2,6 +2,71 @@ import { Request, Response } from 'express';
 import { db } from '../db.js';
 import { isUuid } from '../utils/helpers.js';
 
+export async function getAuthorsList(req: Request, res: Response): Promise<void> {
+  try {
+    const { search, page = '1', limit = '20' } = req.query;
+
+    const pageNum = Math.max(1, parseInt(page as string, 10) || 1);
+    const limitNum = Math.max(1, Math.min(50, parseInt(limit as string, 10) || 20));
+    const skip = (pageNum - 1) * limitNum;
+
+    const whereClause: any = {};
+    if (search && typeof search === 'string' && search.trim()) {
+      const q = search.trim().toLowerCase();
+      whereClause.OR = [
+        { name: { contains: q, mode: 'insensitive' } },
+        { username: { contains: q, mode: 'insensitive' } },
+      ];
+    }
+
+    const total = await db.user.count({ where: whereClause });
+    const authors = await db.user.findMany({
+      where: whereClause,
+      select: {
+        id: true,
+        name: true,
+        username: true,
+        bio: true,
+        avatarUrl: true,
+        role: true,
+        _count: {
+          select: {
+            literatures: true,
+            followers: true,
+          },
+        },
+      },
+      skip,
+      take: limitNum,
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const formattedAuthors = authors.map((a) => ({
+      id: a.id,
+      name: a.name,
+      username: a.username,
+      bio: a.bio,
+      avatarUrl: a.avatarUrl,
+      role: a.role,
+      worksCount: a._count.literatures,
+      followersCount: a._count.followers,
+    }));
+
+    res.status(200).json({
+      authors: formattedAuthors,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        totalPages: Math.ceil(total / limitNum),
+      },
+    });
+  } catch (error) {
+    console.error('Error fetching authors list:', error);
+    res.status(500).json({ error: 'Internal server error while fetching authors list' });
+  }
+}
+
 export async function getAuthorProfile(req: Request, res: Response): Promise<void> {
   try {
     const { id } = req.params;
