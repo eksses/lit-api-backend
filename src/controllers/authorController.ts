@@ -318,3 +318,44 @@ export async function getFeed(req: Request, res: Response): Promise<void> {
     res.status(500).json({ error: 'Internal server error while fetching feed' });
   }
 }
+
+export async function deleteUser(req: Request, res: Response): Promise<void> {
+  try {
+    if (!req.user) {
+      res.status(401).json({ error: 'Unauthorized', message: 'Authentication required' });
+      return;
+    }
+
+    const idStr = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+
+    if (!idStr) {
+      res.status(400).json({ error: 'User ID is required' });
+      return;
+    }
+
+    const targetUser = await db.user.findUnique({
+      where: { id: idStr },
+      select: { id: true },
+    });
+
+    if (!targetUser) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+
+    const isAdmin = req.user.role === 'admin';
+    const isSelf = req.user.id === targetUser.id;
+
+    if (!isAdmin && !isSelf) {
+      res.status(403).json({ error: 'Forbidden', message: 'You do not have permission to delete this user' });
+      return;
+    }
+
+    await db.user.delete({ where: { id: idStr } });
+
+    res.status(200).json({ success: true, message: 'User deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting user:', error);
+    res.status(500).json({ error: 'Internal server error while deleting user' });
+  }
+}

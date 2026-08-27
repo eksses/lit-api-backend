@@ -351,3 +351,44 @@ export async function createLiterature(req: Request, res: Response): Promise<voi
     res.status(500).json({ error: 'Internal server error while creating literature' });
   }
 }
+
+export async function deleteLiterature(req: Request, res: Response): Promise<void> {
+  try {
+    if (!req.user) {
+      res.status(401).json({ error: 'Unauthorized', message: 'Authentication required' });
+      return;
+    }
+
+    const idStr = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+
+    if (!idStr) {
+      res.status(400).json({ error: 'Literature ID is required' });
+      return;
+    }
+
+    const literature = await db.literature.findUnique({
+      where: { id: idStr },
+      select: { id: true, authorId: true },
+    });
+
+    if (!literature) {
+      res.status(404).json({ error: 'Literature not found' });
+      return;
+    }
+
+    const isAdmin = req.user.role === 'admin';
+    const isAuthor = literature.authorId === req.user.id;
+
+    if (!isAdmin && !isAuthor) {
+      res.status(403).json({ error: 'Forbidden', message: 'You do not have permission to delete this work' });
+      return;
+    }
+
+    await db.literature.delete({ where: { id: idStr } });
+
+    res.status(200).json({ success: true, message: 'Literature deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting literature:', error);
+    res.status(500).json({ error: 'Internal server error while deleting literature' });
+  }
+}

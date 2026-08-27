@@ -143,3 +143,45 @@ export async function createComment(req: Request, res: Response): Promise<void> 
     res.status(500).json({ error: 'Internal server error while creating comment' });
   }
 }
+
+export async function deleteComment(req: Request, res: Response): Promise<void> {
+  try {
+    if (!req.user) {
+      res.status(401).json({ error: 'Unauthorized', message: 'Authentication required' });
+      return;
+    }
+
+    const commentIdStr = Array.isArray(req.params.commentId) ? req.params.commentId[0] : req.params.commentId;
+
+    if (!commentIdStr) {
+      res.status(400).json({ error: 'Comment ID is required' });
+      return;
+    }
+
+    const comment = await db.comment.findUnique({
+      where: { id: commentIdStr },
+      include: { literature: { select: { authorId: true } } },
+    });
+
+    if (!comment) {
+      res.status(404).json({ error: 'Comment not found' });
+      return;
+    }
+
+    const isAdmin = req.user.role === 'admin';
+    const isCommentAuthor = comment.userId === req.user.id;
+    const isPostAuthor = (comment as any).literature?.authorId === req.user.id;
+
+    if (!isAdmin && !isCommentAuthor && !isPostAuthor) {
+      res.status(403).json({ error: 'Forbidden', message: 'You do not have permission to delete this comment' });
+      return;
+    }
+
+    await db.comment.delete({ where: { id: commentIdStr } });
+
+    res.status(200).json({ success: true, message: 'Comment deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting comment:', error);
+    res.status(500).json({ error: 'Internal server error while deleting comment' });
+  }
+}
